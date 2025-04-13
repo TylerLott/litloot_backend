@@ -1,1 +1,1 @@
-# litloot_backend
+# Location for book data

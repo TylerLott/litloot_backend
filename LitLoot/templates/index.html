@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LitLoot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .form-container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #chatResponse, #quizResponse {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+        .loading {
+            display: none;
+            margin-top: 10px;
+        }
+        .quiz-question {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .quiz-answers {
+            margin-top: 10px;
+        }
+        .quiz-answer {
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .quiz-answer:hover {
+            background-color: #f5f5f5;
+        }
+        .quiz-meta {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LitLoot</h1>
+        
+        <div class="form-container">
+            <h2>Book Search</h2>
+            <input type="text" id="chatQuery" placeholder="Ask about a book...">
+            <button onclick="sendChatRequest()">Search</button>
+            <div id="chatResponse"></div>
+            <div class="loading" id="chatLoading">Loading...</div>
+        </div>
+
+        <div class="form-container">
+            <h2>Generate Quiz</h2>
+            <input type="text" id="quizQuery" placeholder="Enter a book topic...">
+            <button onclick="sendQuizRequest()">Generate Quiz</button>
+            <div id="quizResponse"></div>
+            <div class="loading" id="quizLoading">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        function showLoading(elementId) {
+            document.getElementById(elementId).style.display = 'block';
+        }
+
+        function hideLoading(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+
+        function displayResponse(elementId, data) {
+            const responseDiv = document.getElementById(elementId);
+            if (data.error) {
+                responseDiv.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+            } else {
+                responseDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+        }
+
+        function displayQuizResponse(elementId, data) {
+            const responseDiv = document.getElementById(elementId);
+            if (data.error) {
+                responseDiv.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+                return;
+            }
+
+            let html = `<h3>Quiz for: ${data.book}</h3>`;
+            
+            data.questions.forEach((question, index) => {
+                html += `
+                    <div class="quiz-question">
+                        <h4>Question ${index + 1}: ${question.question}</h4>
+                        <div class="quiz-answers">
+                            ${question.answers.map((answer, i) => `
+                                <div class="quiz-answer" onclick="checkAnswer(this, ${i}, ${question.correct_index})">
+                                    ${answer}
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="quiz-meta">
+                            Difficulty: ${question.difficulty} | Type: ${question.type}
+                        </div>
+                    </div>
+                `;
+            });
+
+            responseDiv.innerHTML = html;
+        }
+
+        function checkAnswer(element, selectedIndex, correctIndex) {
+            const answers = element.parentElement.children;
+            
+            // Reset all answers
+            for (let answer of answers) {
+                answer.style.backgroundColor = '';
+                answer.style.color = '';
+            }
+            
+            // Highlight selected answer
+            element.style.backgroundColor = selectedIndex === correctIndex ? '#d4edda' : '#f8d7da';
+            element.style.color = selectedIndex === correctIndex ? '#155724' : '#721c24';
+        }
+
+        async function sendChatRequest() {
+            const query = document.getElementById('chatQuery').value;
+            if (!query) return;
+
+            const responseDiv = document.getElementById('chatResponse');
+            showLoading('chatLoading');
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+                const data = await response.json();
+                displayResponse('chatResponse', data);
+            } catch (error) {
+                displayResponse('chatResponse', { error: error.message });
+            } finally {
+                hideLoading('chatLoading');
+            }
+        }
+
+        async function sendQuizRequest() {
+            const query = document.getElementById('quizQuery').value;
+            if (!query) return;
+
+            const responseDiv = document.getElementById('quizResponse');
+            showLoading('quizLoading');
+
+            try {
+                const response = await fetch('/api/quiz', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+                const data = await response.json();
+                displayQuizResponse('quizResponse', data);
+            } catch (error) {
+                displayResponse('quizResponse', { error: error.message });
+            } finally {
+                hideLoading('quizLoading');
+            }
+        }
+
+        // Add event listeners for Enter key
+        document.getElementById('chatQuery').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendChatRequest();
+            }
+        });
+
+        document.getElementById('quizQuery').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendQuizRequest();
+            }
+        });
+    </script>
+</body>
+</html>

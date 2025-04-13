@@ -1,0 +1,3 @@
+"""
+LitLoot package initialization
+""" 

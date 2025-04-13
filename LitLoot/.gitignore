@@ -1,3 +1,6 @@
+# Environment variables
+.env
+
 # Python
 __pycache__/
 *.py[cod]
@@ -30,9 +33,6 @@ ENV/
 *.swp
 *.swo
 
-# Vector Index
-*/vector_index/*.index
-*/vector_index/*.json
-*/vector_index/books/*.txt
-!../vector_index/README.md
-
+# Logs
+*.log
+litloot_debug.log 
